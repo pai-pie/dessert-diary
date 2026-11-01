@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/meal.dart';
 import '../services/meal_service.dart';
 import '../services/favorite_service.dart';
@@ -21,7 +23,8 @@ class _HomePageState extends State<HomePage> {
   final MealService mealService = MealService();
   final FavoriteService favoriteService = FavoriteService();
 
-  final TextEditingController searchController = TextEditingController();
+  final TextEditingController searchController =
+      TextEditingController();
 
   late Future<List<Meal>> desserts;
 
@@ -42,9 +45,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // =========================
   // LOAD FAVORITES
-  // =========================
   Future<void> loadFavorites() async {
     final favorites = await favoriteService.getFavorites();
 
@@ -55,9 +56,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // =========================
   // TOGGLE FAVORITE
-  // =========================
   Future<void> toggleFavorite(String mealId) async {
     if (favoriteIds.contains(mealId)) {
       await favoriteService.removeFavorite(mealId);
@@ -92,9 +91,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // =========================
   // SEARCH
-  // =========================
   void searchDesserts() {
     final query = searchController.text.trim();
 
@@ -112,9 +109,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // =========================
   // CLEAR SEARCH
-  // =========================
   void clearSearch() {
     searchController.clear();
 
@@ -124,15 +119,54 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  // LOGOUT
+  Future<void> logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text(
+          'Are you sure you want to log out?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, false);
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !mounted) return;
+
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logout failed. Please try again.'),
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
   }
 
-  // =========================
   // OPEN FAVORITES PAGE
-  // =========================
   Future<void> openFavorites() async {
     await Navigator.push(
       context,
@@ -144,17 +178,12 @@ class _HomePageState extends State<HomePage> {
     loadFavorites();
   }
 
-  // =========================
-  // BUILD
-  // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF7F5),
 
-      // =========================
       // APP BAR
-      // =========================
       appBar: AppBar(
         backgroundColor: const Color(0xFFFFF7F5),
         elevation: 0,
@@ -166,20 +195,30 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
+          // FAVORITES BUTTON
           IconButton(
             onPressed: openFavorites,
+            tooltip: 'Favorites',
             icon: const Icon(
               Icons.favorite_border,
               color: Color(0xFFE8A0A8),
               size: 27,
             ),
           ),
+
+          // LOGOUT BUTTON
+          IconButton(
+            onPressed: logout,
+            tooltip: 'Logout',
+            icon: const Icon(
+              Icons.logout,
+              color: Color(0xFF5A3E42),
+            ),
+          ),
         ],
       ),
 
-      // =========================
       // BODY
-      // =========================
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Column(
@@ -187,9 +226,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             const SizedBox(height: 8),
 
-            // =========================
             // GREETING
-            // =========================
             Text(
               'Hello, ${widget.username}! ♡',
               style: const TextStyle(
@@ -198,7 +235,9 @@ class _HomePageState extends State<HomePage> {
                 color: Color(0xFF5A3E42),
               ),
             ),
+
             const SizedBox(height: 6),
+
             const Text(
               'What sweet treat do you want today?',
               style: TextStyle(
@@ -206,11 +245,10 @@ class _HomePageState extends State<HomePage> {
                 color: Color(0xFF8A6A6E),
               ),
             ),
+
             const SizedBox(height: 20),
 
-            // =========================
             // SEARCH BAR
-            // =========================
             Container(
               height: 52,
               decoration: BoxDecoration(
@@ -242,15 +280,15 @@ class _HomePageState extends State<HomePage> {
                         )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 15),
                 ),
               ),
             ),
+
             const SizedBox(height: 26),
 
-            // =========================
             // TITLE
-            // =========================
             Text(
               isSearching ? 'Search Results' : 'Popular Desserts',
               style: const TextStyle(
@@ -259,19 +297,17 @@ class _HomePageState extends State<HomePage> {
                 color: Color(0xFF5A3E42),
               ),
             ),
+
             const SizedBox(height: 12),
 
-            // =========================
             // DESSERT LIST
-            // =========================
             Expanded(
               child: FutureBuilder<List<Meal>>(
                 future: desserts,
                 builder: (context, snapshot) {
-                  // =========================
                   // LOADING
-                  // =========================
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFFE8A0A8),
@@ -279,9 +315,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   }
 
-                  // =========================
                   // ERROR
-                  // =========================
                   if (snapshot.hasError) {
                     return Center(
                       child: Column(
@@ -317,9 +351,7 @@ class _HomePageState extends State<HomePage> {
 
                   final meals = snapshot.data ?? [];
 
-                  // =========================
                   // EMPTY
-                  // =========================
                   if (meals.isEmpty) {
                     return const Center(
                       child: Column(
@@ -344,9 +376,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   }
 
-                  // =========================
                   // GRID
-                  // =========================
                   return GridView.builder(
                     padding: const EdgeInsets.only(bottom: 20),
                     itemCount: meals.length,
@@ -359,14 +389,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                     itemBuilder: (context, index) {
                       final meal = meals[index];
-                      final bool isFavorite = favoriteIds.contains(meal.id);
+                      final bool isFavorite =
+                          favoriteIds.contains(meal.id);
 
                       return GestureDetector(
                         onTap: () async {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DetailPage(mealId: meal.id),
+                              builder: (context) =>
+                                  DetailPage(mealId: meal.id),
                             ),
                           );
 
@@ -378,7 +410,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
+                                color: Colors.black.withValues(alpha: 0.04),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -386,15 +418,15 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: Stack(
                             children: [
-                              // =========================
                               // CARD
-                              // =========================
                               Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   // IMAGE
                                   ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
+                                    borderRadius:
+                                        const BorderRadius.vertical(
                                       top: Radius.circular(18),
                                     ),
                                     child: Image.network(
@@ -402,15 +434,19 @@ class _HomePageState extends State<HomePage> {
                                       height: 145,
                                       width: double.infinity,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
                                         return Container(
                                           height: 145,
-                                          color: const Color(0xFFF7E6E8),
+                                          color:
+                                              const Color(0xFFF7E6E8),
                                           child: const Center(
                                             child: Icon(
-                                              Icons.image_not_supported_outlined,
+                                              Icons
+                                                  .image_not_supported_outlined,
                                               size: 35,
-                                              color: Color(0xFFE8A0A8),
+                                              color:
+                                                  Color(0xFFE8A0A8),
                                             ),
                                           ),
                                         );
@@ -420,8 +456,9 @@ class _HomePageState extends State<HomePage> {
 
                                   // NAME
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(11, 10, 11, 4),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      11, 10, 11, 4,
+                                    ),
                                     child: Text(
                                       meal.name,
                                       maxLines: 2,
@@ -436,7 +473,8 @@ class _HomePageState extends State<HomePage> {
 
                                   // VIEW RECIPE
                                   const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 11),
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 11),
                                     child: Row(
                                       children: [
                                         Text(
@@ -459,9 +497,7 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
 
-                              // =========================
                               // FAVORITE BUTTON
-                              // =========================
                               Positioned(
                                 top: 10,
                                 right: 10,
@@ -477,7 +513,8 @@ class _HomePageState extends State<HomePage> {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.15),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.15),
                                           blurRadius: 6,
                                           offset: const Offset(0, 2),
                                         ),
